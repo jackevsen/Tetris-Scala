@@ -16,7 +16,7 @@ lazy val tetris =
       title := "Tetris",
       gameAssetsDirectory := "assets",
       windowStartWidth := 550,
-      windowStartHeight := 400,
+      windowStartHeight := 800,
       libraryDependencies ++= Seq(
         "io.indigoengine" %%% "indigo-json-circe" % "0.10.0",
         "io.indigoengine" %%% "indigo"            % "0.10.0",
