@@ -114,4 +114,7 @@ object GameUtils {
 
     randomPiece
   }
+
+  def getDice(): Dice =
+    Dice.diceSidesN(7, 1)
 }

@@ -46,11 +46,27 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
       Outcome(model)
     case KeyboardEvent.KeyDown(keyData: Key) =>
       keyData match {
+        case Key(_, " ") =>
+          Outcome(
+            if (!model.gameStarted && !model.gameOver) {
+              model.startNewGame()
+            } else if(model.gameOver) {
+              model.setGameOver(false)
+            } else {
+              model
+            }
+          )
         case Key(_, "p") =>
-          Outcome(model.setPaused(!model.paused))
+          Outcome(
+            if (model.gameStarted) {
+              model.setPaused(!model.paused)
+            } else {
+              model
+            }
+          )
         case _ => {
           Outcome(
-            if (!model.paused && !model.gameOver) {
+            if (model.gameStarted && !model.paused) {
               InputUtils.onKeyDown(keyData, model, context.boundaryLocator, context.dice)
             } else {
               model
@@ -69,15 +85,9 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
     context: FrameContext[Unit],
     model: GameModel
   ): Outcome[SceneUpdateFragment] = {
-    val gameField = model.gameField
     Outcome(
       SceneUpdateFragment(
-        List(
-          gameField.draw().moveTo(gameField.getPosition)
-            .addChild(GraphicsUtils.drawTakenPositions(model.gameFieldModel.getTakenPositions(), model.gameField.cellSize))
-            .addChild(model.currentPiece.draw()),
-          GraphicsUtils.drawText(s"score: ${model.score}", config.viewport.width, 20).moveTo(0, 10),
-        )
+        GraphicsUtils.drawScene(model, config.viewport)
       )
     )
   }

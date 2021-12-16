@@ -69,6 +69,11 @@ case class GameFieldModel(width: Int, height: Int, graphics: GameField) {
 
     diff
   }
+
+  def clearAll(): GameFieldModel = {
+    GameFieldModel.initial(width, height)
+
+  }
 }
 
 object GameFieldModel {
