@@ -1,15 +1,14 @@
-import fonts.FontBoxy
+package jackevsen
+
+import jackevsen.fonts.FontBoxy
 import indigo._
-import indigo.shared.Outcome
-import model.GameModel
-import utils.{GraphicsUtils, InputUtils}
+import jackevsen.model.Game
+import jackevsen.utils.{GameUtils, GraphicsUtils, InputUtils}
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 
 @JSExportTopLevel("IndigoGame")
-object Tetris extends IndigoSandbox[Unit, GameModel] {
-
-  val fontAsset = AssetName("boxy")
+object Tetris extends IndigoSandbox[Unit, Game] {
 
   val config: GameConfig =
     GameConfig.default.withViewport(550, 800)
@@ -32,26 +31,33 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
   ): Outcome[Startup[Unit]] =
     Outcome(Startup.Success(()))
 
-  def initialModel(startupData: Unit): Outcome[GameModel] =
-    Outcome(GameModel.initial())
+  def initialModel(startupData: Unit): Outcome[Game] =
+    Outcome(Game.initial())
 
   def updateModel(
     context: FrameContext[Unit],
-    model: GameModel
-  ): GlobalEvent => Outcome[GameModel] = {
+    model: Game
+  ): GlobalEvent => Outcome[Game] = {
     case ViewportResize(viewport) =>
       val gameField = model.gameField
-      val size = gameField.getSize()
-      gameField.setPosition(Point(viewport.center.x - size.width / 2, 50))
-      Outcome(model)
+      val gameFieldModel = model.gameFieldModel
+      val size = GameUtils.getGameFieldSize(model.gameField)
+
+      Outcome(
+        model.withGameFieldModel(
+          gameFieldModel.withGameField(
+            gameField.withPosition(Point(viewport.center.x - size.width / 2, 50))
+          )
+        )
+      )
     case KeyboardEvent.KeyDown(keyData: Key) =>
       keyData match {
         case Key(_, " ") =>
           Outcome(
             if (!model.gameStarted && !model.gameOver) {
               model.startNewGame()
-            } else if(model.gameOver) {
-              model.setGameOver(false)
+            } else if (model.gameOver) {
+              model.withGameOver(false)
             } else {
               model
             }
@@ -59,7 +65,7 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
         case Key(_, "p") =>
           Outcome(
             if (model.gameStarted) {
-              model.setPaused(!model.paused)
+              model.withPause(!model.paused)
             } else {
               model
             }
@@ -83,7 +89,7 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
 
   def present(
     context: FrameContext[Unit],
-    model: GameModel
+    model: Game
   ): Outcome[SceneUpdateFragment] = {
     Outcome(
       SceneUpdateFragment(
@@ -91,5 +97,4 @@ object Tetris extends IndigoSandbox[Unit, GameModel] {
       )
     )
   }
-
 }

@@ -1,17 +1,17 @@
-package fonts
+package jackevsen.fonts
 
 import indigo.shared.assets.{AssetName, AssetPath, AssetType}
 import indigo.shared.datatypes.{FontChar, FontInfo, FontKey, FontFamily}
 
 object FontBoxy {
 
-  private val _fontName = "boxy";
+  val fontNameString = "boxy";
 
-  val fontName: AssetName = AssetName(_fontName)
+  val fontName: AssetName = AssetName(fontNameString)
 
-  def fontKey: FontKey = FontKey(_fontName)
+  def fontKey: FontKey = FontKey(fontNameString)
 
-  val fontFamily: FontFamily = FontFamily(_fontName)
+  val fontFamily: FontFamily = FontFamily(fontNameString)
 
   def fontType:AssetType =
     AssetType.Image(fontName, AssetPath("assets/boxy_font_small.png"))

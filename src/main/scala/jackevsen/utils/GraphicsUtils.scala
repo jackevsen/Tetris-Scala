@@ -1,32 +1,33 @@
-package utils
+package jackevsen.utils
 
-import displayObjects.pieces.Piece
-import fonts.FontBoxy
+import jackevsen.fonts.FontBoxy
 import indigo.shared.config.GameViewport
 import indigo.shared.datatypes._
 import indigo.shared.scenegraph.{Group, SceneNode, Shape, TextBox}
-import model.{GameFieldPosition, GameModel}
+import jackevsen.model.{Game, GameFieldPosition}
+import jackevsen.renderers.{GameRenderer, RenderData}
 
 object GraphicsUtils {
   def drawGameField(width: Int, height: Int, cellSize: Int): Group = {
     val countVert = width + 1
     val countHorizont = height + 1
-    val array = new Array[Shape](countVert + countHorizont)
 
-    for (i <- 0 until countVert){
-      array(i) = Shape.Line(Point(i * cellSize, 0), Point(i * cellSize, height * cellSize), Stroke(3, RGBA.White))
-    }
+    val listVert: List[Shape.Line] =
+      (0 until countVert).map(i => {
+        Shape.Line(Point(i * cellSize, 0), Point(i * cellSize, height * cellSize), Stroke(3, RGBA.White))
+      }).toList
 
-    for (i <- 0 until countHorizont){
-      array(i + countVert) = Shape.Line(Point(0, i * cellSize), Point(width * cellSize, i * cellSize), Stroke(3, RGBA.White))
-    }
+    val listHorizont: List[Shape.Line] =
+      (0 until countHorizont).map(i => {
+        Shape.Line(Point(0, i * cellSize), Point(width * cellSize, i * cellSize), Stroke(3, RGBA.White))
+      }).toList
 
-    Group(array.toList)
+    Group(listVert ::: listHorizont)
   }
 
-  def drawGamePiece(piece: Piece, cellSize: Int): Group = {
-    val first = piece.pathCoords.head
-    val shapes: List[Shape] = piece.pathCoords.map(p => {
+  def drawGamePiece(renderData: RenderData): Group = {
+    val cellSize = renderData.cellSize
+    val shapes: List[Shape] = renderData.shapeCoords.map(p => {
       Shape.Box(
         Rectangle(p * cellSize, Size(cellSize, cellSize)),
         Fill.Color(RGBA.White),
@@ -61,7 +62,7 @@ object GraphicsUtils {
     )
   }
 
-  def drawScene(model: GameModel, viewport: GameViewport): List[SceneNode] = {
+  def drawScene(model: Game, viewport: GameViewport): List[SceneNode] = {
     if (!model.gameStarted && !model.gameOver) {
       List(
         Group(
@@ -78,15 +79,15 @@ object GraphicsUtils {
         )
       )
     } else if (model.gameStarted) {
-      var list = List(
-        model.gameField.draw().moveTo(model.gameField.getPosition)
-          .addChild(GraphicsUtils.drawTakenPositions(model.gameFieldModel.getTakenPositions(), model.gameField.cellSize))
-          .addChild(model.currentPiece.draw()),
+      val list = List(
+        GameRenderer.renderGameField(model.gameField).moveTo(model.gameField.position)
+          .addChild(GraphicsUtils.drawTakenPositions(model.gameFieldModel.getTakenPositions(), GameUtils.cellSize))
+          .addChild(GameRenderer.renderPiece(model.currentPiece)),
         GraphicsUtils.drawText(s"score: ${model.score}", viewport.width, 20).moveTo(0, 10).alignCenter,
       )
 
       if (model.paused) {
-        list = list ::: List(GraphicsUtils.drawText("PAUSE", viewport.width, 50, 50).moveTo(0, viewport.center.y / 2 ).alignCenter)
+        return list ::: List(GraphicsUtils.drawText("PAUSE", viewport.width, 50, 50).moveTo(0, viewport.center.y - 100).alignCenter)
       }
 
       list
