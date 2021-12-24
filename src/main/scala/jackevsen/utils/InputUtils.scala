@@ -17,7 +17,7 @@ object InputUtils {
             GameUtils.setPieceRotation(
               model.currentPiece,
               model.currentPiece.rotation + Radians.PIby2,
-              model.gameFieldModel,
+              model,
               boundaryLocator
             )
           )
@@ -25,7 +25,8 @@ object InputUtils {
           model
         }
       case Key(_, "ArrowDown") =>
-        model.updatePosition(
+        GameUtils.updateGameModel(
+          model,
           piecePosition.withY(
             piecePosition.y + GameUtils.cellSize
           ),
@@ -33,7 +34,8 @@ object InputUtils {
           dice
         )
       case Key(_, "ArrowLeft") =>
-        model.updatePosition(
+        GameUtils.updateGameModel(
+          model,
           piecePosition.withX(
             piecePosition.x - GameUtils.cellSize
           ),
@@ -41,7 +43,8 @@ object InputUtils {
           dice
         )
       case Key(_, "ArrowRight") =>
-        model.updatePosition(
+        GameUtils.updateGameModel(
+          model,
           piecePosition.withX(
             piecePosition.x + GameUtils.cellSize
           ),

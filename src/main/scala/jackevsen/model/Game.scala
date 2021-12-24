@@ -1,16 +1,12 @@
 package jackevsen.model
 
-import jackevsen.displayObjects.{GameField, Piece}
-import indigo.shared.BoundaryLocator
 import indigo.shared.time.Seconds
 import indigo.shared.datatypes.Point
 import jackevsen.utils.GameUtils
-import indigo.shared.dice.Dice
+import jackevsen.displayObjects.Piece
 
 case class Game(
-  width: Int,
-  height: Int,
-  gameFieldModel: GameFieldModel,
+  gameField: GameField,
   currentPiece: Piece,
   score: Int,
   bestScore: Int,
@@ -20,29 +16,11 @@ case class Game(
   gameStarted: Boolean,
   curentDelta: Seconds,
 ) {
-  def gameField: GameField =
-    gameFieldModel.gameField
+  def isGameStopped: Boolean =
+    !gameStarted || paused || gameOver
 
-  def update(delta: Seconds, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
-    if (!gameStarted || paused || gameOver) {
-      return this
-    }
-
-    if(curentDelta + delta >= movementInterval) {
-      val newPosition = currentPiece.position.withY(
-        currentPiece.position.y + GameUtils.cellSize
-      )
-
-      updatePosition(newPosition, boundaryLocator, dice)
-        .withDelta(Seconds(0))
-    } else {
-      withDelta(curentDelta + delta)
-    }
-  }
-
-  def withGameFieldModel(newGameFieldModel: GameFieldModel): Game = {
-    this.copy(gameFieldModel = newGameFieldModel)
-  }
+  def withGameField(newGameField: GameField): Game =
+    this.copy(gameField = newGameField)
 
   def withPause(value: Boolean): Game =
     this.copy(paused = value)
@@ -73,81 +51,9 @@ case class Game(
       paused = false,
     )
 
-  def updatePosition(newPosition: Point, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
-    val prevPosition = currentPiece.position
-
-    val newPiece = GameUtils.setPiecePosition(
-      currentPiece,
-      newPosition,
-      gameFieldModel,
-      boundaryLocator
-    )
-
-    val positionsInGameField = GameUtils.getPieceFragmentsPositions(newPiece, boundaryLocator)
-
-    val maxRow  = positionsInGameField.foldLeft(0)((acc, elem) => {
-      if (elem.row > acc) {
-        elem.row
-      } else {
-        acc
-      }
-    })
-
-    if (newPosition.y != prevPosition.y && newPiece.position.y != newPosition.y) {
-      return withGameFieldModel(
-        gameFieldModel.takePositions(
-          GameUtils.getPieceFragmentsPositions(currentPiece, boundaryLocator)
-        )
-      ).processNextPiece(dice, boundaryLocator)
-    } else if (maxRow == gameFieldModel.height - 1) {
-      return withGameFieldModel(
-        gameFieldModel.takePositions(positionsInGameField)
-      ).processNextPiece(dice, boundaryLocator)
-    }
-
-    this.withCurrentPiece(newPiece)
-  }
-
-  def setRandomPiece(dice: Dice): Game = {
-    val nextPiece = GameUtils.getRandomPiece(dice)
-      .withPosition(Point((gameFieldModel.width / 2) * GameUtils.cellSize, 0))
-    withCurrentPiece(nextPiece)
-  }
-
-  def processNextPiece(dice: Dice, boundaryLocator: BoundaryLocator): Game = {
-    val (removedRowsCount, newGameFieldModel) = gameFieldModel.removeFilledRows()
-    val scoreForRows = removedRowsCount * (GameUtils.scoreForItem * width)
-
-    val thisCopy = setRandomPiece(dice)
-      .withScore(score + scoreForRows)
-      .withGameFieldModel(newGameFieldModel)
-
-    if(!gameFieldModel.positionsAreFree(
-      GameUtils.getPieceFragmentsPositions(
-        thisCopy.currentPiece, boundaryLocator
-      ))
-    ) {
-        if (score > bestScore) {
-          thisCopy
-            .withGameOver(true)
-            .withBestScore(score)
-        } else {
-          thisCopy
-            .withGameOver(true)
-        }
-    } else {
-      thisCopy
-    }
-  }
-
   def startNewGame(): Game = {
-    val newGameFieldModel = gameFieldModel
-      .clearAll()
-      .withGameField(gameField.withPosition(gameField.position))
-
-    withScore(0)
-      .copy(gameFieldModel = newGameFieldModel)
-      .setRandomPiece(GameUtils.getDice())
+    Game.initial()
+      .withBestScore(bestScore)
       .withGameStarted(true)
   }
 }
@@ -161,9 +67,7 @@ object Game {
       .withPosition(Point((width / 2) * GameUtils.cellSize, 0))
 
     Game(
-      width = width,
-      height = height,
-      gameFieldModel = GameFieldModel.initial(width, height),
+      gameField = GameField.initial(width, height),
       currentPiece = randomPiece,
       score = 0,
       bestScore = 0,

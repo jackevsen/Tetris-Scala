@@ -1,18 +1,10 @@
 package jackevsen.model
 
-import indigo.shared.datatypes.Point
-import jackevsen.displayObjects.GameField
-
-case class GameFieldPosition(row: Int, column: Int)
-
-case class GameFieldModel(width: Int, height: Int, gameField: GameField, cellsList: List[Int]) {
-  def withGameField(newGameField: GameField): GameFieldModel =
-    this.copy(gameField = newGameField)
-
-  def withCellsList(newList: List[Int]): GameFieldModel =
+case class GameField(width: Int, height: Int, cellsList: List[Boolean]) {
+  def withCellsList(newList: List[Boolean]): GameField =
     this.copy(cellsList = newList)
 
-  def takePositions(positions: List[GameFieldPosition]): GameFieldModel = {
+  def withTakenPositions(positions: List[GameFieldPosition]): GameField = {
     val updateIndexesList = positions.map(elem => {
       getCellIndex(elem)
     })
@@ -20,31 +12,31 @@ case class GameFieldModel(width: Int, height: Int, gameField: GameField, cellsLi
     withCellsList(
       updateIndexesList
         .foldLeft(cellsList)((acc, index) => {
-          acc.updated(index, 1)
+          acc.updated(index, true)
         })
     )
   }
 
   def positionsAreFree(positions: List[GameFieldPosition]): Boolean = {
-    positions.map(elem => {
+    !positions.map(elem => {
       cellsList(getCellIndex(elem))
-    }).sum == 0
+    }).contains(true)
   }
 
   def getTakenPositions(): List[GameFieldPosition] = {
     val zippedList = cellsList.zipWithIndex
 
     for {
-      (elem, index) <- zippedList
-      if elem == 1
+      (filledElem, index) <- zippedList
+      if filledElem
     } yield getGameFieldPosition(index)
   }
 
-  def removeFilledRows(): (Int, GameFieldModel) =  {
-    val newCellsList = (0 to height - 1).foldLeft(List[Int]())((acc, index) => {
+  def removeFilledRows(): (Int, GameField) =  {
+    val newCellsList = (0 to height - 1).foldLeft(List[Boolean]())((acc, index) => {
       val startIndex = index * width
       val row = cellsList.slice(startIndex, startIndex + width)
-      if (row.sum < width) {
+      if (row.contains(false)) {
         acc ::: row
       } else {
         acc
@@ -53,11 +45,11 @@ case class GameFieldModel(width: Int, height: Int, gameField: GameField, cellsLi
 
     val diff = cellsList.length - newCellsList.length
 
-    (diff, withCellsList(List.fill(diff)(0) ::: newCellsList))
+    (diff, withCellsList(List.fill(diff)(false) ::: newCellsList))
   }
 
-  def clearAll(): GameFieldModel =
-    GameFieldModel.initial(width, height)
+  def clearAll(): GameField =
+    GameField.initial(width, height)
 
   def getCellIndex(position: GameFieldPosition): Int =
     (position.row * width) + position.column
@@ -70,15 +62,14 @@ case class GameFieldModel(width: Int, height: Int, gameField: GameField, cellsLi
   }
 }
 
-object GameFieldModel {
+object GameField {
   def initial(
     width: Int,
     height: Int
-  ):GameFieldModel =
-    GameFieldModel(
+  ):GameField =
+    GameField(
       width = width,
       height = height,
-      gameField = GameField(width, height, Point(0, 0)),
-      cellsList = List.fill(width * height)(0)
+      cellsList = List.fill(width * height)(false)
     )
 }

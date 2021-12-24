@@ -1,21 +1,12 @@
 package jackevsen.utils
 
-import jackevsen.displayObjects.{
-  GameField,
-  Piece,
-  PieceDogLeft,
-  PieceDogRight,
-  PiecePeriscopeLeft,
-  PiecePeriscopeRight,
-  PieceSquare,
-  PieceStick,
-  PieceT
-}
 import indigo.shared.BoundaryLocator
 import indigo.shared.datatypes.{Point, Radians, Rectangle, Size}
 import indigo.shared.dice.Dice
 import indigo.shared.scenegraph.{Group, Shape}
-import jackevsen.model.{GameFieldModel, GameFieldPosition}
+import indigo.shared.time.Seconds
+import jackevsen.displayObjects._
+import jackevsen.model.{Game, GameField, GameFieldPosition}
 import jackevsen.renderers.GameRenderer
 
 object GameUtils {
@@ -26,8 +17,8 @@ object GameUtils {
     (Math.round(value.toDouble / cellSize.toDouble) * cellSize).toInt
   }
 
-  def setPiecePosition(piece:Piece, newPosition: Point, gameFieldModel: GameFieldModel, boundaryLocator: BoundaryLocator): Piece = {
-    val gameFieldSize = getGameFieldSize(gameFieldModel.gameField)
+  def setPiecePosition(piece:Piece, newPosition: Point, model: Game, boundaryLocator: BoundaryLocator): Piece = {
+    val gameFieldSize = getGameFieldSize(model.gameField.width, model.gameField.height)
     val pieceGraphics = GameRenderer.renderPiece(piece)
     val bounds: Rectangle = pieceGraphics.withPosition(newPosition).calculatedBounds(boundaryLocator)
 
@@ -39,7 +30,7 @@ object GameUtils {
       normalizeValue(bounds.x) >= 0 &&
       normalizeValue(bounds.x + bounds.width) <= gameFieldSize.width &&
       normalizeValue(bounds.y + bounds.height) <= gameFieldSize.height &&
-      gameFieldModel.positionsAreFree(positionsInGameField)
+      model.gameField.positionsAreFree(positionsInGameField)
     ) {
       movedPiece
     } else {
@@ -47,13 +38,11 @@ object GameUtils {
     }
   }
 
-  def setPieceRotation(piece: Piece, newRotation: Radians, gameFieldModel: GameFieldModel, boundaryLocator: BoundaryLocator): Piece = {
-    val gameField = gameFieldModel.gameField
-
+  def setPieceRotation(piece: Piece, newRotation: Radians, model: Game, boundaryLocator: BoundaryLocator): Piece = {
     val newPiece = piece.withRotation(newRotation)
 
     val bounds: Rectangle = GameRenderer.renderPiece(newPiece).calculatedBounds(boundaryLocator)
-    val gameFieldSize: Size = getGameFieldSize(gameField)
+    val gameFieldSize: Size = getGameFieldSize(model.gameField.width, model.gameField.height)
 
     val currentPosition = newPiece.position
 
@@ -91,47 +80,11 @@ object GameUtils {
         currentPosition.y
       }
 
-    setFreePositionsOnGameField(
+    findAndSetFreePositions(
       newPiece.withPosition(Point(newX, newY)),
-      gameFieldModel,
+      model.gameField,
       boundaryLocator
     )
-  }
-
-  def getPieceSize(piece: Piece): Size = {
-    val pieceRenderData = GameRenderer.getPieceRenderData(piece)
-
-    if (pieceRenderData.shapeCoords.length == 0) {
-      return Size(0, 0)
-    }
-
-    val maxPoint: Point = pieceRenderData.shapeCoords.foldLeft(Point(0, 0))((acc, curPiece) => {
-      val newX =
-        if (curPiece.x > acc.x) {
-          curPiece.x
-        } else {
-          acc.x
-        }
-
-      val newY =
-        if (curPiece.y > acc.y) {
-          curPiece.y
-        } else {
-          acc.y
-        }
-
-      acc
-        .withX(newX)
-        .withY(newY)
-    })
-
-    val size: Size = Size((maxPoint.x + 1) * cellSize, (maxPoint.y + 1) * cellSize)
-
-    if (piece.rotation == Radians.PIby2 || piece.rotation == Radians.PIby2 * 2) {
-      size.invert
-    } else {
-      size
-    }
   }
 
   def getPieceFragmentsPositions(piece: Piece, boundaryLocator: BoundaryLocator): List[GameFieldPosition] = {
@@ -153,7 +106,6 @@ object GameUtils {
       val position: Point = pieceBounds.position + coords
       GameFieldPosition(Math.ceil(position.y.toDouble / cellSize).toInt - 1, Math.ceil(position.x.toDouble / cellSize).toInt - 1)
     })
-
   }
 
   def getRandomPiece(dice:Dice): Piece = {
@@ -165,21 +117,20 @@ object GameUtils {
       PiecePeriscopeRight.default,
       PieceDogLeft.default,
       PieceDogRight.default)
-    val randomPiece = piecesList(dice.roll(piecesList.length) - 1)
 
-    randomPiece
+    piecesList(dice.roll(piecesList.length) - 1)
   }
 
   def getDice(): Dice =
     Dice.diceSidesN(7, 1)
 
-  def setFreePositionsOnGameField(piece: Piece, gameFieldModel: GameFieldModel, boundaryLocator: BoundaryLocator): Piece = {
+  def findAndSetFreePositions(piece: Piece, gameField: GameField, boundaryLocator: BoundaryLocator): Piece = {
     val positionOnGameField = getPieceFragmentsPositions(piece, boundaryLocator)
-    if (!gameFieldModel.positionsAreFree(positionOnGameField)) {
+    if (!gameField.positionsAreFree(positionOnGameField)) {
       val curPosition = piece.position
-      setFreePositionsOnGameField(
+      findAndSetFreePositions(
         piece.withPosition(curPosition.withY(curPosition.y - cellSize)),
-        gameFieldModel,
+        gameField,
         boundaryLocator
       )
     } else {
@@ -195,6 +146,99 @@ object GameUtils {
     }
   }
 
-  def getGameFieldSize(gameField: GameField): Size =
-    Size(gameField.width * cellSize, gameField.height * cellSize)
+  def getGameFieldSize(width: Int, height: Int): Size =
+    Size(width * cellSize, height * cellSize)
+
+  def updateGameModelByTimeout(model: Game, delta: Seconds, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
+    if(model.curentDelta + delta >= model.movementInterval) {
+      val newPosition = model.currentPiece.position.withY(
+        model.currentPiece.position.y + cellSize
+      )
+
+      updateGameModel(model, newPosition, boundaryLocator, dice)
+        .withDelta(Seconds(0))
+    } else {
+      model
+        .withDelta(model.curentDelta + delta)
+    }
+  }
+
+  def updateGameModel(model: Game, newPosition: Point, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
+    val prevPosition = model.currentPiece.position
+
+    val newPiece = setPiecePosition(
+      model.currentPiece,
+      newPosition,
+      model,
+      boundaryLocator
+    )
+
+    val positionsInGameField = getPieceFragmentsPositions(newPiece, boundaryLocator)
+
+    val maxRow  = positionsInGameField.foldLeft(0)((acc, elem) => {
+      if (elem.row > acc) {
+        elem.row
+      } else {
+        acc
+      }
+    })
+
+    if (newPosition.y != prevPosition.y && newPiece.position.y != newPosition.y) {
+      processNextPieceUpdate(
+        model.withGameField(
+          model.gameField.withTakenPositions(
+            getPieceFragmentsPositions(model.currentPiece, boundaryLocator)
+          )
+        ),
+        dice,
+        boundaryLocator
+      )
+    } else if (maxRow == model.gameField.height - 1) {
+      processNextPieceUpdate(
+        model.withGameField(
+          model.gameField.withTakenPositions(positionsInGameField)
+        ),
+        dice,
+        boundaryLocator
+      )
+    } else {
+      model.withCurrentPiece(newPiece)
+    }
+  }
+
+  def processNextPieceUpdate(model: Game, dice: Dice, boundaryLocator: BoundaryLocator): Game = {
+    val (removedRowsCount, newGameField) = model.gameField.removeFilledRows()
+    val scoreForRows = removedRowsCount * (scoreForItem * model.gameField.width)
+
+    val newModel = setRandomPiece(model, dice)
+      .withScore(model.score + scoreForRows)
+      .withGameField(newGameField)
+
+    if(
+      !model.gameField.positionsAreFree(
+        getPieceFragmentsPositions(
+          newModel.currentPiece, boundaryLocator
+        )
+      )
+    ) {
+      if (model.score > model.bestScore) {
+        newModel
+          .withGameOver(true)
+          .withBestScore(model.score)
+      } else {
+        newModel
+          .withGameOver(true)
+      }
+    } else {
+      newModel
+    }
+  }
+
+  def setRandomPiece(model: Game, dice: Dice): Game = {
+    val nextPiece = getRandomPiece(dice)
+      .withPosition(Point((model.gameField.width / 2) * cellSize, 0))
+
+    model
+      .withCurrentPiece(nextPiece)
+  }
 }

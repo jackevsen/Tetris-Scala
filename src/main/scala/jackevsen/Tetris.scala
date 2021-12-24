@@ -3,7 +3,8 @@ package jackevsen
 import jackevsen.fonts.FontBoxy
 import indigo._
 import jackevsen.model.Game
-import jackevsen.utils.{GameUtils, GraphicsUtils, InputUtils}
+import jackevsen.renderers.GameRenderer
+import jackevsen.utils._
 
 import scala.scalajs.js.annotation.JSExportTopLevel
 
@@ -38,18 +39,6 @@ object Tetris extends IndigoSandbox[Unit, Game] {
     context: FrameContext[Unit],
     model: Game
   ): GlobalEvent => Outcome[Game] = {
-    case ViewportResize(viewport) =>
-      val gameField = model.gameField
-      val gameFieldModel = model.gameFieldModel
-      val size = GameUtils.getGameFieldSize(model.gameField)
-
-      Outcome(
-        model.withGameFieldModel(
-          gameFieldModel.withGameField(
-            gameField.withPosition(Point(viewport.center.x - size.width / 2, 50))
-          )
-        )
-      )
     case KeyboardEvent.KeyDown(keyData: Key) =>
       keyData match {
         case Key(_, " ") =>
@@ -81,7 +70,17 @@ object Tetris extends IndigoSandbox[Unit, Game] {
         }
       }
     case FrameTick =>
-      Outcome(model.update(context.delta, context.boundaryLocator, context.dice))
+      Outcome(
+        if (model.isGameStopped)
+          model
+        else
+          GameUtils.updateGameModelByTimeout(
+            model,
+            context.delta,
+            context.boundaryLocator,
+            context.dice
+          )
+      )
 
     case _ =>
       Outcome(model)
@@ -93,7 +92,7 @@ object Tetris extends IndigoSandbox[Unit, Game] {
   ): Outcome[SceneUpdateFragment] = {
     Outcome(
       SceneUpdateFragment(
-        GraphicsUtils.drawScene(model, config.viewport)
+        GameRenderer.renderScene(model, config.viewport)
       )
     )
   }
