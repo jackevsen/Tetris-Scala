@@ -150,16 +150,18 @@ object GameUtils {
     Size(width * cellSize, height * cellSize)
 
   def updateGameModelByTimeout(model: Game, delta: Seconds, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
-    if(model.curentDelta + delta >= model.movementInterval) {
+    val deltaFloat = delta.toFloat
+
+    if(model.curentDelta + deltaFloat >= model.movementInterval) {
       val newPosition = model.currentPiece.position.withY(
         model.currentPiece.position.y + cellSize
       )
 
       updateGameModel(model, newPosition, boundaryLocator, dice)
-        .withDelta(Seconds(0))
+        .withDelta(0)
     } else {
       model
-        .withDelta(model.curentDelta + delta)
+        .withDelta(model.curentDelta + deltaFloat)
     }
   }
 
@@ -208,11 +210,12 @@ object GameUtils {
 
   def processNextPieceUpdate(model: Game, dice: Dice, boundaryLocator: BoundaryLocator): Game = {
     val (removedRowsCount, newGameField) = model.gameField.removeFilledRows()
-    val scoreForRows = removedRowsCount * (scoreForItem * model.gameField.width)
+    val totalScore = (removedRowsCount * (scoreForItem * model.gameField.width)) + model.score
 
     val newModel = setRandomPiece(model, dice)
-      .withScore(model.score + scoreForRows)
+      .withScore(totalScore)
       .withGameField(newGameField)
+      .withMovementInterval(calculateMovementInterval(totalScore))
 
     if(
       !model.gameField.positionsAreFree(
@@ -241,4 +244,11 @@ object GameUtils {
     model
       .withCurrentPiece(nextPiece)
   }
+
+  def calculateMovementInterval(score: Int): Float = {
+    val coef = score.toFloat / 10000
+
+    1 - coef
+  }
+
 }

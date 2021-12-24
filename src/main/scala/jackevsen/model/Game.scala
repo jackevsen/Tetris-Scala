@@ -1,6 +1,5 @@
 package jackevsen.model
 
-import indigo.shared.time.Seconds
 import indigo.shared.datatypes.Point
 import jackevsen.utils.GameUtils
 import jackevsen.displayObjects.Piece
@@ -10,11 +9,11 @@ case class Game(
   currentPiece: Piece,
   score: Int,
   bestScore: Int,
-  movementInterval: Seconds,
+  movementInterval: Float,
   paused: Boolean,
   gameOver: Boolean,
   gameStarted: Boolean,
-  curentDelta: Seconds,
+  curentDelta: Float,
 ) {
   def isGameStopped: Boolean =
     !gameStarted || paused || gameOver
@@ -35,7 +34,7 @@ case class Game(
   def withCurrentPiece(newPiece: Piece): Game =
     this.copy(currentPiece = newPiece)
 
-  def withDelta(value: Seconds): Game =
+  def withDelta(value: Float): Game =
     this.copy(curentDelta = value)
 
   def withScore(value: Int): Game =
@@ -50,6 +49,9 @@ case class Game(
       gameOver = false,
       paused = false,
     )
+
+  def withMovementInterval(newInterval: Float): Game =
+    this.copy(movementInterval = newInterval)
 
   def startNewGame(): Game = {
     Game.initial()
@@ -71,11 +73,11 @@ object Game {
       currentPiece = randomPiece,
       score = 0,
       bestScore = 0,
-      movementInterval = Seconds(1),
+      movementInterval = 1,
       paused = false,
       gameOver = false,
       gameStarted = false,
-      curentDelta = Seconds(0)
+      curentDelta = 0
     )
   }
 }
