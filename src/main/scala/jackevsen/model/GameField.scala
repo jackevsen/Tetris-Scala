@@ -45,7 +45,7 @@ case class GameField(width: Int, height: Int, cellsList: List[Boolean]) {
 
     val diff = cellsList.length - newCellsList.length
 
-    (diff, withCellsList(List.fill(diff)(false) ::: newCellsList))
+    (diff / width, withCellsList(List.fill(diff)(false) ::: newCellsList))
   }
 
   def clearAll(): GameField =

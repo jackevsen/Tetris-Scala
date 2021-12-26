@@ -168,14 +168,14 @@ object GameUtils {
   def updateGameModel(model: Game, newPosition: Point, boundaryLocator: BoundaryLocator, dice: Dice): Game = {
     val prevPosition = model.currentPiece.position
 
-    val newPiece = setPiecePosition(
+    val updatedPiece = setPiecePosition(
       model.currentPiece,
       newPosition,
       model,
       boundaryLocator
     )
 
-    val positionsInGameField = getPieceFragmentsPositions(newPiece, boundaryLocator)
+    val positionsInGameField = getPieceFragmentsPositions(updatedPiece, boundaryLocator)
 
     val maxRow  = positionsInGameField.foldLeft(0)((acc, elem) => {
       if (elem.row > acc) {
@@ -185,7 +185,7 @@ object GameUtils {
       }
     })
 
-    if (newPosition.y != prevPosition.y && newPiece.position.y != newPosition.y) {
+    if (newPosition.y != prevPosition.y && updatedPiece.position.y != newPosition.y) {
       processNextPieceUpdate(
         model.withGameField(
           model.gameField.withTakenPositions(
@@ -204,7 +204,7 @@ object GameUtils {
         boundaryLocator
       )
     } else {
-      model.withCurrentPiece(newPiece)
+      model.withCurrentPiece(updatedPiece)
     }
   }
 
@@ -246,7 +246,7 @@ object GameUtils {
   }
 
   def calculateMovementInterval(score: Int): Float = {
-    val coef = score.toFloat / 10000
+    val coef = score.toFloat / 1000
 
     1 - coef
   }
